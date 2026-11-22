@@ -5,6 +5,7 @@ import prisma from "../../prisma/client.ts";
 import type { Prisma } from "../../generated/prisma/client.ts";
 import { publicUserSelect } from "./auth.controller.ts";
 import { getUserId } from "../middleware/authenticate.ts";
+import { uploadImage } from "../services/cloudinary.ts";
 import logger from "../logger.ts";
 import {
   PER_PAGE,
@@ -21,6 +22,7 @@ const announcementSelect = {
   description: true,
   price: true,
   category: true,
+  imageUrl: true,
   createdAt: true,
   updatedAt: true,
   user: { select: publicUserSelect },
@@ -91,38 +93,64 @@ async function assertOwnership(announcementId: number, userId: number) {
   }
 }
 
-// POST /announcements
+// Uploads req.file to Cloudinary, returns its URL
+async function uploadRequestImage(
+  file: Express.Multer.File | undefined,
+  userId: number,
+): Promise<string | undefined> {
+  if (!file) return undefined;
+
+  const imageUrl = await uploadImage(file.path);
+  logger.info(
+    { userId, imageUrl, size: file.size, mimetype: file.mimetype },
+    "Image uploaded to Cloudinary",
+  );
+  return imageUrl;
+}
+
+// POST /announcements (JSON or multipart with optional image)
 export const createAnnouncement: RequestHandler = async (req, res) => {
   // Author comes from the token, not the body
   const userId = getUserId(req);
   const data = req.body as CreateAnnouncementBody;
 
+  const imageUrl = await uploadRequestImage(req.file, userId);
+
   const announcement = await prisma.announcement.create({
-    data: { ...data, userId },
+    data: { ...data, imageUrl, userId },
     select: announcementSelect,
   });
 
-  logger.info({ announcementId: announcement.id, userId }, "Announcement created");
+  logger.info(
+    { announcementId: announcement.id, userId, hasImage: Boolean(imageUrl) },
+    "Announcement created",
+  );
 
   res.status(201).json(announcement);
 };
 
-// PATCH /announcements/:id
+// PATCH /announcements/:id (JSON or multipart with optional image)
 export const updateAnnouncement: RequestHandler = async (req, res) => {
   const userId = getUserId(req);
   const { id } = req.params as unknown as AnnouncementIdParams;
   const data = req.body as UpdateAnnouncementBody;
 
+  // Before uploading anything
   await assertOwnership(id, userId);
+
+  const imageUrl = await uploadRequestImage(req.file, userId);
 
   // updatedAt is set by @updatedAt
   const announcement = await prisma.announcement.update({
     where: { id },
-    data,
+    data: { ...data, imageUrl },
     select: announcementSelect,
   });
 
-  logger.info({ announcementId: id, userId, fields: Object.keys(data) }, "Announcement updated");
+  logger.info(
+    { announcementId: id, userId, fields: Object.keys(data), hasNewImage: Boolean(imageUrl) },
+    "Announcement updated",
+  );
 
   res.json(announcement);
 };

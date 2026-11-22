@@ -13,30 +13,46 @@ const categorySchema = z.enum(CATEGORIES).openapi({ example: "sale" });
 
 // Request schemas
 
+const announcementFields = {
+  title: z
+    .string()
+    .trim()
+    .min(5)
+    .max(50)
+    .openapi({ example: "Продам велосипед" }),
+  description: z
+    .string()
+    .trim()
+    .min(10)
+    .openapi({ example: "Гірський велосипед, 21 швидкість" }),
+  // Multipart sends numbers as strings
+  price: z.coerce.number().positive().openapi({ example: 8000 }),
+  category: categorySchema,
+};
+
 export const createAnnouncementSchema = z
-  .object({
-    title: z
-      .string()
-      .trim()
-      .min(5)
-      .max(50)
-      .openapi({ example: "Продам велосипед" }),
-    description: z
-      .string()
-      .trim()
-      .min(10)
-      .openapi({ example: "Гірський велосипед, 21 швидкість" }),
-    price: z.number().positive().openapi({ example: 8000 }),
-    category: categorySchema,
-  })
+  .object(announcementFields)
   .openapi("CreateAnnouncementRequest");
 
+// Non-empty check is in the PATCH route: the image is in req.file
 export const updateAnnouncementSchema = createAnnouncementSchema
   .partial()
-  .refine((data) => Object.keys(data).length > 0, {
-    message: "At least one field must be provided",
-  })
   .openapi("UpdateAnnouncementRequest");
+
+// Multipart forms (OpenAPI only), flat so Swagger UI shows a file picker
+const imageField = z.string().openapi({
+  type: "string",
+  format: "binary",
+  description: "Optional image: JPEG, PNG, WEBP or GIF, up to 5 MB",
+});
+
+export const CreateAnnouncementFormSchema = z
+  .object({ ...announcementFields, image: imageField.optional() })
+  .openapi("CreateAnnouncementForm");
+
+export const UpdateAnnouncementFormSchema = CreateAnnouncementFormSchema
+  .partial()
+  .openapi("UpdateAnnouncementForm");
 
 export const announcementIdParamsSchema = z.object({
   id: z.coerce
@@ -80,6 +96,10 @@ export const AnnouncementSchema = z
     description: z.string().openapi({ example: "Відмінний стан, 16GB RAM" }),
     price: z.number().openapi({ example: 18000 }),
     category: categorySchema,
+    imageUrl: z.url().nullable().openapi({
+      example:
+        "https://res.cloudinary.com/demo/image/upload/v1/announcements/abc123.jpg",
+    }),
     createdAt: z.iso.datetime().openapi({ example: "2025-01-10T12:00:00.000Z" }),
     updatedAt: z.iso.datetime().openapi({ example: "2025-01-10T12:00:00.000Z" }),
     user: UserSchema,

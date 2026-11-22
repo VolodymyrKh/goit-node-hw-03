@@ -5,3 +5,7 @@ node_modules
 /generated/prisma
 *.db
 *.db-journal
+
+# Temporary uploads (the directory itself is kept)
+/uploads/*
+!/uploads/.gitkeep

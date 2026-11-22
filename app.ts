@@ -80,7 +80,8 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     });
   }
 
-  if (err.status && err.status >= 400 && err.status < 500) {
+  // 4xx and exposed 5xx (502 from Cloudinary)
+  if (err.status >= 400 && (err.status < 500 || err.expose)) {
     return res.status(err.status).json({ error: err.message });
   }
 
