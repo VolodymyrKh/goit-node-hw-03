@@ -5,6 +5,10 @@ import { UserSchema } from "./auth.validator.ts";
 export const CATEGORIES = ["sale", "service", "job", "other"] as const;
 export const PER_PAGE = 10;
 
+const PG_INT_MAX = 2147483647; // Postgres INT upper bound
+// Keeps skip within PG_INT_MAX
+const MAX_PAGE = Math.floor(PG_INT_MAX / PER_PAGE) + 1;
+
 const categorySchema = z.enum(CATEGORIES).openapi({ example: "sale" });
 
 // Request schemas
@@ -39,6 +43,7 @@ export const announcementIdParamsSchema = z.object({
     .number()
     .int()
     .positive()
+    .max(PG_INT_MAX)
     .openapi({ param: { name: "id", in: "path" }, example: 5 }),
 });
 
@@ -56,6 +61,7 @@ export const listAnnouncementsQuerySchema = z.object({
     .number()
     .int()
     .positive()
+    .max(MAX_PAGE)
     .default(1)
     .openapi({ description: "Page number (10 items per page)", example: 1 }),
 });

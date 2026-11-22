@@ -1,7 +1,7 @@
 {
-  "name": "Boilerplate-code",
+  "name": "goit-node-hw-03",
   "version": "1.0.0",
-  "description": "",
+  "description": "Announcements board REST API",
   "main": "index.js",
   "scripts": {
     "start": "tsx app.ts",
