@@ -5,8 +5,10 @@ import swaggerUi from "swagger-ui-express";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import cors from "cors";
+import { pinoHttp } from "pino-http";
 import createHttpError from "http-errors";
 
+import logger from "./src/logger.ts";
 import { generateOpenApiDocument } from "./src/openapi.ts";
 import authRoutes from "./src/routes/auth.routes.ts";
 import announcementsRoutes from "./src/routes/announcements.routes.ts";
@@ -18,6 +20,23 @@ const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? "")
   .filter(Boolean);
 
 const app = express();
+
+// First, so rejected requests are logged too
+app.use(
+  pinoHttp({
+    logger,
+    // No headers: they may contain tokens
+    serializers: {
+      req: (req) => ({ id: req.id, method: req.method, url: req.url }),
+      res: (res) => ({ statusCode: res.statusCode }),
+    },
+    customLogLevel: (_req, res, err) => {
+      if (err || res.statusCode >= 500) return "error";
+      if (res.statusCode >= 400) return "warn";
+      return "info";
+    },
+  }),
+);
 
 // Secure HTTP headers
 app.use(helmet());
@@ -52,8 +71,6 @@ app.use((_req: Request, res: Response) => {
 
 // Error handler
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-  console.error(err);
-
   if (err.type === "entity.parse.failed") {
     return res.status(400).json({
       error: "Validation failed",
@@ -79,6 +96,8 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     return res.status(400).json({ error: "Foreign key constraint failed" });
   }
 
+  // Logged by pino-http with the real stack
+  res.err = err;
   res.status(500).json({ error: "Internal server error" });
 });
 

@@ -5,6 +5,7 @@ import prisma from "../../prisma/client.ts";
 import type { Prisma } from "../../generated/prisma/client.ts";
 import { publicUserSelect } from "./auth.controller.ts";
 import { getUserId } from "../middleware/authenticate.ts";
+import logger from "../logger.ts";
 import {
   PER_PAGE,
   type AnnouncementIdParams,
@@ -101,6 +102,8 @@ export const createAnnouncement: RequestHandler = async (req, res) => {
     select: announcementSelect,
   });
 
+  logger.info({ announcementId: announcement.id, userId }, "Announcement created");
+
   res.status(201).json(announcement);
 };
 
@@ -119,6 +122,8 @@ export const updateAnnouncement: RequestHandler = async (req, res) => {
     select: announcementSelect,
   });
 
+  logger.info({ announcementId: id, userId, fields: Object.keys(data) }, "Announcement updated");
+
   res.json(announcement);
 };
 
@@ -130,6 +135,8 @@ export const deleteAnnouncement: RequestHandler = async (req, res) => {
   await assertOwnership(id, userId);
 
   await prisma.announcement.delete({ where: { id } });
+
+  logger.info({ announcementId: id, userId }, "Announcement deleted");
 
   // 204 has no body
   res.status(204).end();

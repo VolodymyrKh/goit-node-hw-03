@@ -6,6 +6,7 @@ import createHttpError from "http-errors";
 
 import prisma from "../../prisma/client.ts";
 import { JWT_SECRET, getUserId, verifyToken } from "../middleware/authenticate.ts";
+import logger from "../logger.ts";
 import type {
   LoginBody,
   RefreshBody,
@@ -69,6 +70,8 @@ export const register: RequestHandler = async (req, res) => {
     data: { token: tokens.refreshToken, userId: user.id },
   });
 
+  logger.info({ userId: user.id, username: user.username }, "User registered");
+
   res.status(201).json({ user, ...tokens });
 };
 
@@ -83,6 +86,7 @@ export const login: RequestHandler = async (req, res) => {
   );
 
   if (!user || !passwordMatches) {
+    logger.warn({ username }, "Failed login attempt");
     throw createHttpError(401, "Invalid credentials");
   }
 
@@ -95,6 +99,8 @@ export const login: RequestHandler = async (req, res) => {
       data: { token: tokens.refreshToken, userId: user.id },
     }),
   ]);
+
+  logger.info({ userId: user.id, username: user.username }, "User logged in");
 
   res.json({
     user: {
@@ -138,6 +144,8 @@ export const refresh: RequestHandler = async (req, res) => {
     });
   });
 
+  logger.info({ userId: stored.userId }, "Tokens refreshed");
+
   res.json(tokens);
 };
 
@@ -147,6 +155,8 @@ export const logout: RequestHandler = async (req, res) => {
 
   // deleteMany doesn't throw when nothing matches
   await prisma.refreshToken.deleteMany({ where: { userId } });
+
+  logger.info({ userId }, "User logged out");
 
   res.status(204).end();
 };
