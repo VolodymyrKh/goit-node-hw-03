@@ -28,7 +28,7 @@ export const publicUserSelect = {
   name: true,
 } as const;
 
-function generateTokens(userId: number) {
+export function generateTokens(userId: number) {
   const sub = String(userId);
 
   const accessToken = jwt.sign({ type: "access" }, JWT_SECRET, {
