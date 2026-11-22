@@ -22,4 +22,4 @@ ENV PORT=3000
 EXPOSE 3000
 
 # Run with an init process (compose: init: true) so SIGTERM reaches node
-CMD ["sh", "-c", "npx prisma migrate deploy && exec node --import tsx app.ts"]
+CMD ["sh", "-c", "npx prisma migrate deploy && exec node --import tsx server.ts"]

@@ -2,10 +2,10 @@
   "name": "goit-node-hw-03",
   "version": "1.0.0",
   "description": "Announcements board REST API",
-  "main": "index.js",
+  "main": "server.ts",
   "scripts": {
-    "start": "tsx app.ts",
-    "dev": "tsx --watch app.ts",
+    "start": "tsx server.ts",
+    "dev": "tsx --watch server.ts",
     "prisma:migrate": "prisma migrate dev",
     "prisma:generate": "prisma generate"
   },
