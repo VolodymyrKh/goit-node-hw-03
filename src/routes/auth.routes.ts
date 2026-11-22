@@ -8,6 +8,7 @@ import {
   register,
 } from "../controllers/auth.controller.ts";
 import { authenticate } from "../middleware/authenticate.ts";
+import { authLimiter } from "../middleware/rateLimit.ts";
 import { validateBody } from "../middleware/validate.ts";
 import {
   AuthResponseSchema,
@@ -26,6 +27,9 @@ import {
 
 const router = Router();
 
+// Applies to every auth route
+router.use(authLimiter);
+
 router.post("/register", validateBody(registerSchema), register);
 router.post("/login", validateBody(loginSchema), login);
 router.post("/refresh", validateBody(refreshSchema), refresh);
@@ -38,6 +42,15 @@ export default router;
 
 const json = <T>(schema: T) => ({ "application/json": { schema } });
 const security = [{ [bearerAuth.name]: [] }];
+const tooManyRequests = {
+  description: "Rate limit exceeded: max 10 requests per IP per 15 minutes",
+  content: {
+    "application/json": {
+      schema: ErrorSchema,
+      example: { error: "Too many requests, please try again later" },
+    },
+  },
+};
 
 registry.registerPath({
   method: "post",
@@ -49,6 +62,7 @@ registry.registerPath({
     201: { description: "User created", content: json(AuthResponseSchema) },
     400: { description: "Validation failed", content: json(ValidationErrorSchema) },
     409: { description: "Username or email already taken", content: json(ErrorSchema) },
+    429: tooManyRequests,
   },
 });
 
@@ -62,6 +76,7 @@ registry.registerPath({
     200: { description: "Logged in", content: json(AuthResponseSchema) },
     400: { description: "Validation failed", content: json(ValidationErrorSchema) },
     401: { description: "Invalid credentials", content: json(ErrorSchema) },
+    429: tooManyRequests,
   },
 });
 
@@ -75,6 +90,7 @@ registry.registerPath({
     200: { description: "New token pair", content: json(TokensSchema) },
     400: { description: "Validation failed", content: json(ValidationErrorSchema) },
     401: { description: "Invalid or revoked refresh token", content: json(ErrorSchema) },
+    429: tooManyRequests,
   },
 });
 
@@ -87,6 +103,7 @@ registry.registerPath({
   responses: {
     204: { description: "Logged out" },
     401: { description: "Missing, invalid or expired access token", content: json(ErrorSchema) },
+    429: tooManyRequests,
   },
 });
 
@@ -100,5 +117,6 @@ registry.registerPath({
     200: { description: "Current user", content: json(MeResponseSchema) },
     401: { description: "Missing, invalid or expired access token", content: json(ErrorSchema) },
     404: { description: "User not found", content: json(ErrorSchema) },
+    429: tooManyRequests,
   },
 });

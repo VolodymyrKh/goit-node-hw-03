@@ -3,12 +3,37 @@ import express from "express";
 import type { NextFunction, Request, Response } from "express";
 import swaggerUi from "swagger-ui-express";
 import cookieParser from "cookie-parser";
+import helmet from "helmet";
+import cors from "cors";
+import createHttpError from "http-errors";
 
 import { generateOpenApiDocument } from "./src/openapi.ts";
 import authRoutes from "./src/routes/auth.routes.ts";
 import announcementsRoutes from "./src/routes/announcements.routes.ts";
 
+// "http://a.com, http://b.com" -> ["http://a.com", "http://b.com"]
+const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 const app = express();
+
+// Secure HTTP headers
+app.use(helmet());
+
+// No Origin (curl, Postman) is allowed, browsers only from ALLOWED_ORIGINS
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(createHttpError(403, "Origin not allowed by CORS"));
+      }
+    },
+  }),
+);
 
 app.use(express.json());
 app.use(cookieParser());
